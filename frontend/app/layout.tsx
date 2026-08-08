@@ -71,32 +71,20 @@ export default async function RootLayout({ children }: RootLayoutProps) {
           enableSystem
           disableTransitionOnChange
         >
-          <header className="fixed top-0 left-0 z-50 hidden w-full flex-row justify-between p-6 md:flex">
-            <a
-              target="_blank"
-              rel="noopener noreferrer"
-              href="https://livekit.io"
-              className="scale-100 transition-transform duration-300 hover:scale-110"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={logo} alt={`${companyName} Logo`} className="block size-6 dark:hidden" />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={logoDark ?? logo}
-                alt={`${companyName} Logo`}
-                className="hidden size-6 dark:block"
-              />
-            </a>
-            <span className="text-foreground font-mono text-xs font-bold tracking-wider uppercase">
-              Built with{' '}
-              <a
-                target="_blank"
-                rel="noopener noreferrer"
-                href="https://docs.livekit.io/agents"
-                className="underline underline-offset-4"
+          <header className="fixed top-0 left-0 z-50 flex w-full flex-row items-center justify-between px-5 py-4 md:px-8">
+            {/* Brand */}
+            <div className="flex items-center gap-2">
+              <span className="text-xl" aria-hidden="true">🎓</span>
+              <span
+                className="font-bold tracking-tight text-slate-700 dark:text-slate-200"
+                style={{ fontSize: '0.95rem' }}
               >
-                LiveKit Agents
-              </a>
+                AI Learning Companion
+              </span>
+            </div>
+            {/* Status badge — visible on md+ */}
+            <span className="hidden rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 font-mono text-xs font-semibold text-indigo-600 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300 md:inline-flex">
+              Powered by Murf Falcon TTS
             </span>
           </header>
 
