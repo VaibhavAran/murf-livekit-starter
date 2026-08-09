@@ -1,0 +1,131 @@
+"""
+database.py — SQLite persistence layer for caller profiles.
+
+Each caller is stored once keyed by user_id (derived from the LiveKit
+participant identity).  Two public async helpers are exposed:
+
+    get_user(user_id)     → dict | None
+    save_user(user_data)  → None  (upsert)
+"""
+
+import json
+import logging
+import sqlite3
+from datetime import datetime, timezone
+from pathlib import Path
+
+logger = logging.getLogger("agent.database")
+
+# Resolve the DB path relative to this file: backend/data/users.db
+_DB_DIR = Path(__file__).parent.parent / "data"
+_DB_PATH = _DB_DIR / "users.db"
+
+
+def _ensure_db() -> None:
+    """Create the DB directory and table if they do not already exist."""
+    _DB_DIR.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(_DB_PATH)
+    try:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                user_id             TEXT PRIMARY KEY,
+                name                TEXT,
+                language_preference TEXT,
+                current_level       TEXT,
+                topics_covered      TEXT DEFAULT '[]',
+                common_mistakes     TEXT DEFAULT '[]',
+                last_interaction    TEXT
+            )
+            """
+        )
+        conn.commit()
+        logger.info("Database ready at %s", _DB_PATH)
+    finally:
+        conn.close()
+
+
+# Initialise on import so the table is always available before any call.
+_ensure_db()
+
+
+# ---------------------------------------------------------------------------
+# Public helpers
+# ---------------------------------------------------------------------------
+
+
+def get_user(user_id: str) -> dict | None:
+    """
+    Look up a caller by user_id.
+
+    Returns a dict with all stored fields, or None if this is a new caller.
+    JSON-encoded list columns (topics_covered, common_mistakes) are decoded
+    into Python lists automatically.
+    """
+    conn = sqlite3.connect(_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            "SELECT * FROM users WHERE user_id = ?", (user_id,)
+        ).fetchone()
+        if row is None:
+            return None
+        data = dict(row)
+        # Decode JSON list columns
+        for col in ("topics_covered", "common_mistakes"):
+            try:
+                data[col] = json.loads(data[col] or "[]")
+            except (json.JSONDecodeError, TypeError):
+                data[col] = []
+        return data
+    finally:
+        conn.close()
+
+
+def save_user(user_data: dict) -> None:
+    """
+    Upsert a caller record.
+
+    ``user_data`` should contain at minimum ``user_id``.
+    Any missing optional fields default to None / empty list.
+    ``last_interaction`` is always overwritten with the current UTC time.
+    """
+    user_id = user_data.get("user_id")
+    if not user_id:
+        raise ValueError("user_data must contain a non-empty 'user_id'")
+
+    # Encode list columns to JSON strings
+    topics = json.dumps(user_data.get("topics_covered") or [])
+    mistakes = json.dumps(user_data.get("common_mistakes") or [])
+    now = datetime.now(timezone.utc).isoformat()
+
+    conn = sqlite3.connect(_DB_PATH)
+    try:
+        conn.execute(
+            """
+            INSERT INTO users
+                (user_id, name, language_preference, current_level,
+                 topics_covered, common_mistakes, last_interaction)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                name                = excluded.name,
+                language_preference = excluded.language_preference,
+                current_level       = excluded.current_level,
+                topics_covered      = excluded.topics_covered,
+                common_mistakes     = excluded.common_mistakes,
+                last_interaction    = excluded.last_interaction
+            """,
+            (
+                user_id,
+                user_data.get("name"),
+                user_data.get("language_preference"),
+                user_data.get("current_level"),
+                topics,
+                mistakes,
+                now,
+            ),
+        )
+        conn.commit()
+        logger.info("Saved profile for user_id=%s name=%s", user_id, user_data.get("name"))
+    finally:
+        conn.close()
