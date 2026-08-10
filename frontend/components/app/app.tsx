@@ -28,9 +28,33 @@ interface AppProps {
 
 export function App({ appConfig }: AppProps) {
   const tokenSource = useMemo(() => {
-    return typeof process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT === 'string'
-      ? getSandboxTokenSource(appConfig)
-      : TokenSource.endpoint('/api/token');
+    if (typeof process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT === 'string') {
+      return getSandboxTokenSource(appConfig);
+    }
+
+    // Send a stable participant identity from localStorage so the backend
+    // recognises returning callers across sessions.
+    return TokenSource.custom(async () => {
+      let participantIdentity = localStorage.getItem('lk_participant_identity');
+      if (!participantIdentity) {
+        participantIdentity = `user_${crypto.randomUUID()}`;
+        localStorage.setItem('lk_participant_identity', participantIdentity);
+      }
+
+      const roomConfig = appConfig.agentName
+        ? { agents: [{ agent_name: appConfig.agentName }] }
+        : undefined;
+
+      const res = await fetch('/api/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          participant_identity: participantIdentity,
+          ...(roomConfig ? { room_config: roomConfig } : {}),
+        }),
+      });
+      return res.json();
+    });
   }, [appConfig]);
 
   const session = useSession(

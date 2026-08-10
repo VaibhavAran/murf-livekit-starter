@@ -8,7 +8,6 @@ from livekit.agents import (
     AgentSession,
     JobContext,
     JobProcess,
-    RunContext,
     cli,
     function_tool,
     room_io,
@@ -18,7 +17,7 @@ from livekit.plugins import deepgram, google, murf, noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 from database import get_user, save_user
-from prompts import SYSTEM_PROMPT
+from prompts import build_instructions
 
 logger = logging.getLogger("agent")
 
@@ -31,37 +30,17 @@ TTS_STYLE = "Conversational"
 
 
 class Assistant(Agent):
-    def __init__(self, user_id: str) -> None:
-        super().__init__(instructions=SYSTEM_PROMPT)
+    def __init__(self, user_id: str, profile: dict | None = None) -> None:
+        super().__init__(instructions=build_instructions(profile))
         self._user_id = user_id
+        self._has_consent = False  # tracks if user gave save consent
 
     # ------------------------------------------------------------------
-    # Tool 1 — look up a caller at session start
-    # ------------------------------------------------------------------
-    @function_tool
-    async def lookup_caller(self, context: RunContext) -> dict:
-        """
-        Look up the current caller in the database at the start of the session.
-
-        Call this FIRST before saying anything to the user.
-        Returns a dict with 'found' (bool) and either the caller's saved
-        profile or an empty record if they are new.
-        """
-        user_id = self._user_id
-        logger.info("Looking up caller with user_id=%s", user_id)
-        profile = get_user(user_id)
-        if profile:
-            logger.info("Returning caller: %s", profile.get("name"))
-            return {"found": True, **profile}
-        return {"found": False, "user_id": user_id}
-
-    # ------------------------------------------------------------------
-    # Tool 2 — save what you learned about the caller (after consent)
+    # Tool 1 — Save caller info (requires explicit consent)
     # ------------------------------------------------------------------
     @function_tool
     async def save_caller_info(
         self,
-        context: RunContext,
         name: str,
         language_preference: str = "",
         current_level: str = "",
@@ -69,20 +48,14 @@ class Assistant(Agent):
         common_mistakes: list[str] | None = None,
     ) -> str:
         """
-        Save or update the caller's profile in the database.
-
-        IMPORTANT: You MUST have received explicit verbal consent from the
-        caller before calling this function.  If they said "no" or did not
-        give consent, do NOT call this function.
-
-        Args:
-            name: The caller's first name (required).
-            language_preference: Preferred language, e.g. 'Hindi', 'English', 'Hinglish'.
-            current_level: Academic level, e.g. 'Class 8', 'Beginner', 'Intermediate'.
-            topics_covered: List of topics discussed in this or prior sessions.
-            common_mistakes: Recurring mistakes the learner makes.
+        Save or update the caller's profile so they can be recognised next
+        time. You MUST have received explicit verbal consent from the caller
+        before calling this. If they said no or did not give consent, do NOT
+        call this function.
         """
-        user_data = {
+        logger.info("Tool called: save_caller_info for %s", name)
+
+        profile = {
             "user_id": self._user_id,
             "name": name,
             "language_preference": language_preference,
@@ -90,9 +63,78 @@ class Assistant(Agent):
             "topics_covered": topics_covered or [],
             "common_mistakes": common_mistakes or [],
         }
-        save_user(user_data)
+        save_user(profile)
+        self._has_consent = True
         logger.info("Saved profile for %s (user_id=%s)", name, self._user_id)
         return f"Profile saved for {name}."
+
+    # ------------------------------------------------------------------
+    # Tool 2 — Fetch Practice Question (Day 5)
+    # ------------------------------------------------------------------
+    @function_tool
+    async def fetch_practice_question(
+        self,
+        topic: str,
+        level: str = "beginner",
+    ) -> str:
+        """
+        Fetch a practice question from the local dataset.
+        Call this when the student asks for a practice question, exercise,
+        or quiz on a topic.
+        Available topics: science, math, english.
+        Available levels: beginner, intermediate, advanced.
+        """
+        logger.info(
+            "Tool called: fetch_practice_question topic='%s' level='%s'",
+            topic,
+            level,
+        )
+
+        dataset = {
+            "science": {
+                "beginner": "What do plants need to grow and make their own food?",
+                "intermediate": "Can you explain the process of photosynthesis in your own words?",
+                "advanced": "How does the absence of sunlight affect the chlorophyll in a plant leaf?",
+            },
+            "math": {
+                "beginner": "If you have 3 apples and buy 4 more, how many apples do you have in total?",
+                "intermediate": "What is 15% of 200 rupees?",
+                "advanced": "Solve for x: 3x + 12 = 27",
+            },
+            "english": {
+                "beginner": "Can you give me an example of a noun in a sentence?",
+                "intermediate": "What is the difference between 'there', 'their', and 'they're'?",
+                "advanced": "Can you explain what a metaphor is and give me one example?",
+            },
+        }
+
+        topic_lower = topic.lower().strip()
+        level_lower = level.lower().strip()
+
+        available_topics = ", ".join(dataset.keys())
+
+        if topic_lower not in dataset:
+            return (
+                f"Failure: No practice question available for '{topic}'. "
+                f"Tell the user this topic is not in the dataset and suggest "
+                f"trying: {available_topics} (levels: beginner, intermediate, advanced). "
+                f"Do NOT invent a question."
+            )
+
+        if level_lower not in dataset[topic_lower]:
+            available_levels = ", ".join(dataset[topic_lower].keys())
+            return (
+                f"Failure: No question for level '{level}' in '{topic}'. "
+                f"Suggest these levels: {available_levels}. "
+                f"Do NOT invent a question."
+            )
+
+        question = dataset[topic_lower][level_lower]
+        return (
+            f"Question: {question}\n"
+            f"Source Note: From the hand-built local practice-question "
+            f"dataset included with this project (August 2026)."
+        )
 
 
 server = AgentServer()
@@ -107,26 +149,34 @@ server.setup_fnc = prewarm
 
 @server.rtc_session(agent_name="my-agent")
 async def my_agent(ctx: JobContext):
-    # Logging setup
-    ctx.log_context_fields = {
-        "room": ctx.room.name,
-    }
+    ctx.log_context_fields = {"room": ctx.room.name}
 
-    # Derive a stable user_id from the first non-agent participant identity.
-    # Falls back to the room name so every reconnect in the same room is
-    # treated as the same person.
     await ctx.connect()
 
-    user_id = ctx.room.name  # default
-    for participant in ctx.room.remote_participants.values():
-        if participant.identity:
-            user_id = participant.identity
-            break
+    # Wait for the human participant to fully join so we get their
+    # stable identity (sent from the browser via localStorage).
+    participant = await ctx.wait_for_participant()
+    user_id = (
+        participant.identity
+        if participant and participant.identity
+        else ctx.room.name
+    )
 
     logger.info("Session user_id resolved to: %s", user_id)
 
-    # Set up a voice AI pipeline using Murf Falcon, Gemini, Deepgram, and
-    # the LiveKit turn detector
+    # Pre-load the caller profile BEFORE building the system prompt.
+    # This is the ONLY place the database is read — the prompt is then
+    # assembled with all the personalisation already baked in.
+    profile = get_user(user_id)
+    if profile and profile.get("name"):
+        logger.info(
+            "Returning caller detected: name=%s topics=%s",
+            profile["name"],
+            profile.get("topics_covered"),
+        )
+    else:
+        logger.info("New caller — no profile found for %s", user_id)
+
     session = AgentSession(
         stt=deepgram.STT(
             model="nova-3",
@@ -146,7 +196,7 @@ async def my_agent(ctx: JobContext):
     )
 
     await session.start(
-        agent=Assistant(user_id=user_id),
+        agent=Assistant(user_id=user_id, profile=profile),
         room=ctx.room,
         room_options=room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(

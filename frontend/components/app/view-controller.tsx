@@ -154,40 +154,15 @@ export function ViewController({ appConfig }: ViewControllerProps) {
   const { isConnected, start, end } = useSessionContext();
   const { resolvedTheme } = useTheme();
 
-  // Track if the call was intentionally ended (vs. never connected)
-  const [callEnded, setCallEnded] = useState(false);
-  const wasConnectedRef = useState(false);
-
-  // When we connect, mark that we've had a session
-  useEffect(() => {
-    if (isConnected) {
-      wasConnectedRef[1](true);
-      // Reset call ended when a new session starts
-      setCallEnded(false);
-    }
-  }, [isConnected]);
-
   const handleDisconnect = () => {
     end();
-    setCallEnded(true);
   };
 
-  const handleRestart = () => {
-    setCallEnded(false);
-  };
-
-  // Which view to show
-  const showCallEnded = !isConnected && callEnded;
-  const showWelcome = !isConnected && !callEnded;
+  const showWelcome = !isConnected;
   const showSession = isConnected;
 
   return (
     <AnimatePresence mode="wait">
-      {/* Call Ended View */}
-      {showCallEnded && (
-        <CallEndedView key="call-ended" onRestart={handleRestart} />
-      )}
-
       {/* Welcome view */}
       {showWelcome && (
         <MotionWelcomeView
