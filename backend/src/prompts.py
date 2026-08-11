@@ -6,10 +6,11 @@ a returning-caller profile was found in the database.
 """
 
 
-def build_instructions(profile: dict | None) -> str:
+def build_instructions(profile: dict | None, is_outbound: bool = False) -> str:
     """
     Build the full system prompt.
 
+    - If *is_outbound* is True → outbound call prompt (Step 4 rule: who, why, how to stop).
     - If *profile* is None or has no name → new-caller prompt.
     - If *profile* has a name → returning-caller prompt.
     """
@@ -59,6 +60,23 @@ MEMORY & CONSENT
 - If YES → call `save_caller_info` with everything you know.
 - If NO → do NOT call `save_caller_info`. Respect this unconditionally.
 - NEVER call `save_caller_info` without explicit verbal consent.
+"""
+
+    # ── Branch: outbound call (Day 6 Step 4 requirement) ────────────
+    if is_outbound:
+        learner_name = profile.get("name", "there") if profile else "there"
+        return core + f"""
+OUTBOUND CALL OPENING PROTOCOL (CRITICAL — Step 4 Requirement)
+This is an OUTBOUND call initiated by the system to nudge the learner for daily practice.
+The user did NOT call you. You called them.
+
+Within your VERY FIRST sentences when the user answers/greets, you MUST explicitly state:
+1. WHO IS CALLING: "Namaste {learner_name}! This is your AI Learning Companion."
+2. WHY: "I'm calling for your scheduled daily practice question session."
+3. HOW TO STOP: "If you want to stop getting these daily practice calls, just say 'stop calling me' or hang up."
+
+Example First Turn:
+"Namaste {learner_name}! This is your AI Learning Companion calling for your scheduled daily practice session. If you ever want to stop receiving these daily practice calls, just say 'stop calling me'. Are you ready for a quick question today?"
 """
 
     # ── Branch: new caller ───────────────────────────────────────────

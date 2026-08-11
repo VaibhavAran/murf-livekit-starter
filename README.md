@@ -52,6 +52,18 @@ An interactive voice AI companion for students in India, powered by Murf Falcon 
 
 ---
 
+### Day 6: Outbound Calls & Telephony (SIP / Linphone)
+- **Outbound Use Case:** Scheduled Daily Practice Nudge / Learning Reminder Call.
+- **Outbound Opening Protocol (Step 4 Requirement):** When an outbound call connects, the agent immediately **speaks first** (via `session.say`) enforcing a strict 3-part opening:
+  1. **Who is calling:** *"Namaste [Name], this is your AI Learning Companion..."*
+  2. **Why:** *"calling for your scheduled daily practice session."*
+  3. **How to stop:** *"If you want to stop receiving these daily practice calls, just say 'stop calling me' or hang up."*
+- **Agent Dispatch & Telephony Support:** `outbound_call.py` dynamically creates an outbound room, dispatches the `my-agent` worker, and initiates a SIP call to your **Linphone** softphone or phone number.
+- **Dynamic Configuration:** Reads `LIVEKIT_SIP_OUTBOUND_TRUNK_ID` and `LINPHONE_SIP_URI` dynamically from `.env.local` without hardcoded parameters. Automatically sanitizes SIP usernames (`user` vs `sip:user@host`).
+- **Telephony Noise Cancellation:** Automatically activates `BVCTelephony` noise suppression for SIP streams.
+
+---
+
 ## How to Run the Application
 
 ### 1. Backend Setup
@@ -61,12 +73,23 @@ uv sync
 uv run python src/agent.py dev
 ```
 
-### 2. Frontend Setup
+### 2. Triggering Outbound SIP Calls (Day 6)
+Make sure `LINPHONE_SIP_URI` and `LIVEKIT_SIP_OUTBOUND_TRUNK_ID` are set in `backend/.env.local`, then run:
+```bash
+cd backend
+# Uses variables configured in .env.local:
+uv run python src/outbound_call.py
+
+# Or explicitly pass flags via CLI:
+uv run python src/outbound_call.py --sip "vaibhav_aran00" --trunk "ST_AWbaz5AK9P7e"
+```
+
+### 3. Frontend Setup
 ```bash
 cd frontend
 pnpm install
 pnpm dev
 ```
 
-### 3. Open Application
+### 4. Open Application
 Navigate to `http://localhost:3000` in your web browser.

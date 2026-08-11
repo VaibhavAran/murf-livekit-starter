@@ -30,8 +30,13 @@ TTS_STYLE = "Conversational"
 
 
 class Assistant(Agent):
-    def __init__(self, user_id: str, profile: dict | None = None) -> None:
-        super().__init__(instructions=build_instructions(profile))
+    def __init__(
+        self,
+        user_id: str,
+        profile: dict | None = None,
+        is_outbound: bool = False,
+    ) -> None:
+        super().__init__(instructions=build_instructions(profile, is_outbound=is_outbound))
         self._user_id = user_id
         self._has_consent = False  # tracks if user gave save consent
 
@@ -153,9 +158,14 @@ async def my_agent(ctx: JobContext):
 
     await ctx.connect()
 
-    # Wait for the human participant to fully join so we get their
-    # stable identity (sent from the browser via localStorage).
-    participant = await ctx.wait_for_participant()
+    # Try to get the participant (with a short timeout so outbound dispatch doesn't block room connection)
+    import asyncio
+    try:
+        participant = await asyncio.wait_for(ctx.wait_for_participant(), timeout=3.0)
+    except asyncio.TimeoutError:
+        logger.warning("No participant joined within 3s, proceeding with room initialization...")
+        participant = next(iter(ctx.room.remote_participants.values())) if ctx.room.remote_participants else None
+
     user_id = (
         participant.identity
         if participant and participant.identity
@@ -165,8 +175,6 @@ async def my_agent(ctx: JobContext):
     logger.info("Session user_id resolved to: %s", user_id)
 
     # Pre-load the caller profile BEFORE building the system prompt.
-    # This is the ONLY place the database is read — the prompt is then
-    # assembled with all the personalisation already baked in.
     profile = get_user(user_id)
     if profile and profile.get("name"):
         logger.info(
@@ -176,6 +184,14 @@ async def my_agent(ctx: JobContext):
         )
     else:
         logger.info("New caller — no profile found for %s", user_id)
+
+    # Check if this is an outbound call (either SIP participant present or room starts with outbound_)
+    is_sip = (
+        (participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP if participant else False)
+        or ctx.room.name.startswith("outbound_")
+    )
+    if is_sip:
+        logger.info("Outbound SIP call detected for room: %s", ctx.room.name)
 
     session = AgentSession(
         stt=deepgram.STT(
@@ -196,7 +212,7 @@ async def my_agent(ctx: JobContext):
     )
 
     await session.start(
-        agent=Assistant(user_id=user_id, profile=profile),
+        agent=Assistant(user_id=user_id, profile=profile, is_outbound=is_sip),
         room=ctx.room,
         room_options=room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(
@@ -209,6 +225,18 @@ async def my_agent(ctx: JobContext):
             ),
         ),
     )
+
+    # For outbound SIP calls, the agent must speak first.
+    # The user answered the phone and is waiting — greet them immediately.
+    if is_sip:
+        learner_name = profile.get("name", "") if profile else ""
+        name_part = f" {learner_name}," if learner_name else ","
+        await session.say(
+            f"Namaste{name_part} this is your AI Learning Companion calling for your scheduled daily practice session. "
+            "If you want to stop receiving these daily practice calls, just say stop calling me. "
+            "Are you ready for a quick practice question today?",
+            allow_interruptions=True,
+        )
 
 
 if __name__ == "__main__":
