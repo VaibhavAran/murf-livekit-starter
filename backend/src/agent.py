@@ -16,7 +16,7 @@ from livekit.agents import (
 from livekit.plugins import deepgram, google, murf, noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
-from database import get_user, save_user
+from database import get_user, save_escalation, save_user
 from prompts import build_instructions
 
 logger = logging.getLogger("agent")
@@ -139,6 +139,46 @@ class Assistant(Agent):
             f"Question: {question}\n"
             f"Source Note: From the hand-built local practice-question "
             f"dataset included with this project (August 2026)."
+        )
+
+    # ------------------------------------------------------------------
+    # Tool 4 — Create Human Escalation (Day 7 Task)
+    # ------------------------------------------------------------------
+    @function_tool
+    async def create_escalation(
+        self,
+        reason: str,
+        urgency: str = "medium",
+        summary: str = "",
+        preferred_contact: str = "phone/voice",
+        caller_name: str = "",
+    ) -> str:
+        """
+        Create a human help request / escalation ticket for a teacher or human support mentor.
+        Call this tool ONLY when:
+        1. The learner is extremely frustrated, upset, or struggling repeatedly after multiple attempts.
+        2. The learner explicitly asks to talk to a human teacher or tutor for specialized support.
+
+        IMPORTANT: You MUST get explicit verbal permission from the caller BEFORE calling this tool.
+        """
+        logger.info("Tool called: create_escalation for reason='%s', urgency='%s'", reason, urgency)
+
+        # Save ticket into SQLite database
+        ticket_id = save_escalation({
+            "user_id": self._user_id,
+            "caller_name": caller_name or "Student",
+            "reason": reason,
+            "urgency": urgency,
+            "summary": summary,
+            "preferred_contact": preferred_contact,
+        })
+
+        return (
+            f"Success: Escalation request created successfully. "
+            f"Reference ID: {ticket_id}. "
+            f"Instruct the student to note down Reference ID {ticket_id}. "
+            f"Explain that a human teacher will review their summary and follow up within 24 hours. "
+            f"Ask if they would like to try a simpler question in the meantime."
         )
 
 

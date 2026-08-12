@@ -64,6 +64,17 @@ An interactive voice AI companion for students in India, powered by Murf Falcon 
 
 ---
 
+### Day 7: Know When to Ask for Human Help (Escalation & Dashboard)
+- **Escalation Triggers:**
+  1. **Learner Frustration / Distress:** When the student is visibly upset or struggling repeatedly after multiple attempts.
+  2. **Human Teacher Request:** When the student explicitly asks to talk to a real teacher or human mentor.
+- **Verbal Consent Rule:** Before creating a ticket, the agent explicitly asks permission: *"I can create a help request so a human teacher can follow up with you. May I send a brief summary of what we're working on to a teacher?"*
+- **Escalation Tool:** `create_escalation(reason, urgency, summary, preferred_contact, caller_name)` generates a unique reference ticket (e.g. `TICKET-8912`).
+- **Clear Expectations:** Gives the user their Reference ID and explains that a teacher will review their summary within 24 hours. Does not promise immediate resolution.
+- **Live Teacher Dashboard:** Real-time dashboard at `http://localhost:3000/escalations` backed by SQLite storing and displaying all open escalation tickets with urgency badges, session summaries, and timestamps.
+
+---
+
 ## How to Run the Application
 
 ### 1. Backend Setup
@@ -91,5 +102,6 @@ pnpm install
 pnpm dev
 ```
 
-### 4. Open Application
-Navigate to `http://localhost:3000` in your web browser.
+### 4. Open Application & Teacher Dashboard
+- Voice Agent UI: `http://localhost:3000`
+- Teacher Escalations Dashboard (Day 7): `http://localhost:3000/escalations`

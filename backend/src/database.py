@@ -39,6 +39,21 @@ def _ensure_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS escalations (
+                ticket_id           TEXT PRIMARY KEY,
+                user_id             TEXT,
+                caller_name         TEXT,
+                reason              TEXT,
+                urgency             TEXT,
+                summary             TEXT,
+                preferred_contact   TEXT,
+                status              TEXT DEFAULT 'Open',
+                created_at          TEXT
+            )
+            """
+        )
         conn.commit()
         logger.info("Database ready at %s", _DB_PATH)
     finally:
@@ -127,5 +142,56 @@ def save_user(user_data: dict) -> None:
         )
         conn.commit()
         logger.info("Saved profile for user_id=%s name=%s", user_id, user_data.get("name"))
+    finally:
+        conn.close()
+
+
+def save_escalation(escalation_data: dict) -> str:
+    """
+    Save a new human escalation ticket.
+    Returns the ticket_id.
+    """
+    ticket_id = escalation_data.get("ticket_id")
+    if not ticket_id:
+        import random
+        ticket_id = f"TICKET-{random.randint(1000, 9999)}"
+
+    now = datetime.now(timezone.utc).isoformat()
+    conn = sqlite3.connect(_DB_PATH)
+    try:
+        conn.execute(
+            """
+            INSERT INTO escalations
+                (ticket_id, user_id, caller_name, reason, urgency, summary, preferred_contact, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                ticket_id,
+                escalation_data.get("user_id", "anonymous"),
+                escalation_data.get("caller_name", "Student"),
+                escalation_data.get("reason", "Teacher assistance requested"),
+                escalation_data.get("urgency", "medium"),
+                escalation_data.get("summary", ""),
+                escalation_data.get("preferred_contact", "voice/phone"),
+                escalation_data.get("status", "Open"),
+                now,
+            ),
+        )
+        conn.commit()
+        logger.info("Created escalation ticket %s for %s", ticket_id, escalation_data.get("caller_name"))
+        return ticket_id
+    finally:
+        conn.close()
+
+
+def get_escalations() -> list[dict]:
+    """
+    Retrieve all escalation tickets ordered by newest first.
+    """
+    conn = sqlite3.connect(_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute("SELECT * FROM escalations ORDER BY created_at DESC").fetchall()
+        return [dict(row) for row in rows]
     finally:
         conn.close()
