@@ -1,4 +1,5 @@
 import logging
+import os
 
 from dotenv import load_dotenv
 from livekit import rtc
@@ -16,7 +17,7 @@ from livekit.agents import (
 from livekit.plugins import deepgram, google, murf, noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
-from database import get_user, save_escalation, save_user
+from database import get_user, save_call_log, save_escalation, save_user
 from prompts import build_instructions
 
 logger = logging.getLogger("agent")
@@ -39,6 +40,8 @@ class Assistant(Agent):
         super().__init__(instructions=build_instructions(profile, is_outbound=is_outbound))
         self._user_id = user_id
         self._has_consent = False  # tracks if user gave save consent
+        self.exercises_done = 0
+        self.escalation_done = 0
 
     # ------------------------------------------------------------------
     # Tool 1 — Save caller info (requires explicit consent)
@@ -135,6 +138,7 @@ class Assistant(Agent):
             )
 
         question = dataset[topic_lower][level_lower]
+        self.exercises_done += 1
         return (
             f"Question: {question}\n"
             f"Source Note: From the hand-built local practice-question "
@@ -172,6 +176,7 @@ class Assistant(Agent):
             "summary": summary,
             "preferred_contact": preferred_contact,
         })
+        self.escalation_done += 1
 
         return (
             f"Success: Escalation request created successfully. "
@@ -251,8 +256,11 @@ async def my_agent(ctx: JobContext):
         preemptive_generation=True,
     )
 
+    start_time = asyncio.get_event_loop().time()
+    assistant_instance = Assistant(user_id=user_id, profile=profile, is_outbound=is_sip)
+
     await session.start(
-        agent=Assistant(user_id=user_id, profile=profile, is_outbound=is_sip),
+        agent=assistant_instance,
         room=ctx.room,
         room_options=room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(
@@ -277,6 +285,34 @@ async def my_agent(ctx: JobContext):
             "Are you ready for a quick practice question today?",
             allow_interruptions=True,
         )
+
+    # Save Call Analytics Log when session closes
+    def log_call_analytics():
+        duration = int(asyncio.get_event_loop().time() - start_time)
+        exercises = assistant_instance.exercises_done
+        escalations = assistant_instance.escalation_done
+        has_consent = assistant_instance._has_consent
+
+        # Day 8 Success Definition for Learning & Literacy:
+        # A call is successful if a practice exercise was completed, a teacher escalation was requested, or consent profile saved.
+        status = "SUCCESS" if (exercises > 0 or escalations > 0 or has_consent) else "FAILED"
+
+        caller_name = (profile.get("name") if profile else None) or "Student"
+        call_type = "outbound_sip" if is_sip else "inbound_web"
+
+        save_call_log({
+            "call_id": f"CALL-{os.urandom(3).hex().upper()}",
+            "user_id": user_id,
+            "caller_name": caller_name,
+            "call_type": call_type,
+            "duration_seconds": max(duration, 1),
+            "exercises_done": exercises,
+            "escalation_done": escalations,
+            "status": status,
+        })
+        logger.info("Call session ended. Logged outcome: %s (duration=%ds, exercises=%d)", status, duration, exercises)
+
+    ctx.add_shutdown_callback(log_call_analytics)
 
 
 if __name__ == "__main__":

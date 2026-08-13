@@ -69,21 +69,41 @@ export default async function RootLayout({ children }: RootLayoutProps) {
           enableSystem
           disableTransitionOnChange
         >
-          <header className="fixed top-0 left-0 z-50 flex w-full flex-row items-center justify-between px-5 py-4 md:px-8">
+          <header className="fixed top-0 left-0 z-50 flex w-full flex-row items-center justify-between px-5 py-4 md:px-8 bg-slate-900/40 backdrop-blur-md border-b border-slate-800/50">
             {/* Brand */}
-            <div className="flex items-center gap-2">
-              <span className="text-xl" aria-hidden="true">🎓</span>
-              <span
-                className="font-bold tracking-tight text-slate-700 dark:text-slate-200"
-                style={{ fontSize: '0.95rem' }}
-              >
-                AI Learning Companion
-              </span>
+            <div className="flex items-center gap-3">
+              <a href="/" className="flex items-center gap-2">
+                <span className="text-xl" aria-hidden="true">🎓</span>
+                <span
+                  className="font-bold tracking-tight text-slate-700 dark:text-slate-200"
+                  style={{ fontSize: '0.95rem' }}
+                >
+                  AI Learning Companion
+                </span>
+              </a>
             </div>
-            {/* Status badge — visible on md+ */}
-            <span className="hidden rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 font-mono text-xs font-semibold text-indigo-600 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300 md:inline-flex">
-              Powered by Murf Falcon TTS
-            </span>
+
+            {/* Navigation links for Judges */}
+            <nav className="flex items-center gap-2 font-medium text-xs">
+              <a
+                href="/"
+                className="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/80 transition"
+              >
+                🎙️ Voice Companion
+              </a>
+              <a
+                href="/escalations"
+                className="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/80 transition"
+              >
+                🧑‍🏫 Teacher Portal
+              </a>
+              <a
+                href="/analytics"
+                className="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/80 transition"
+              >
+                📊 Analytics
+              </a>
+            </nav>
           </header>
 
           {children}
