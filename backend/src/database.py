@@ -54,6 +54,21 @@ def _ensure_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS call_logs (
+                call_id             TEXT PRIMARY KEY,
+                user_id             TEXT,
+                caller_name         TEXT,
+                call_type           TEXT,
+                duration_seconds    INTEGER,
+                exercises_done      INTEGER DEFAULT 0,
+                escalation_done     INTEGER DEFAULT 0,
+                status              TEXT,
+                ended_at            TEXT
+            )
+            """
+        )
         conn.commit()
         logger.info("Database ready at %s", _DB_PATH)
     finally:
@@ -193,5 +208,64 @@ def get_escalations() -> list[dict]:
     try:
         rows = conn.execute("SELECT * FROM escalations ORDER BY created_at DESC").fetchall()
         return [dict(row) for row in rows]
+    finally:
+        conn.close()
+
+
+def save_call_log(log_data: dict) -> None:
+    """
+    Save a completed call log record.
+    """
+    import random
+    call_id = log_data.get("call_id") or f"CALL-{random.randint(10000, 99999)}"
+    now = datetime.now(timezone.utc).isoformat()
+
+    conn = sqlite3.connect(_DB_PATH)
+    try:
+        conn.execute(
+            """
+            INSERT INTO call_logs
+                (call_id, user_id, caller_name, call_type, duration_seconds, exercises_done, escalation_done, status, ended_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                call_id,
+                log_data.get("user_id", "unknown"),
+                log_data.get("caller_name", "Student"),
+                log_data.get("call_type", "inbound_web"),
+                log_data.get("duration_seconds", 0),
+                log_data.get("exercises_done", 0),
+                log_data.get("escalation_done", 0),
+                log_data.get("status", "FAILED"),
+                now,
+            ),
+        )
+        conn.commit()
+        logger.info("Saved call_log %s status=%s", call_id, log_data.get("status"))
+    finally:
+        conn.close()
+
+
+def get_call_analytics() -> dict:
+    """
+    Retrieve aggregated metrics and list of all logged calls.
+    """
+    conn = sqlite3.connect(_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        total_calls = conn.execute("SELECT COUNT(*) FROM call_logs").fetchone()[0]
+        successful_calls = conn.execute("SELECT COUNT(*) FROM call_logs WHERE status = 'SUCCESS'").fetchone()[0]
+        failed_calls = conn.execute("SELECT COUNT(*) FROM call_logs WHERE status = 'FAILED'").fetchone()[0]
+
+        rows = conn.execute("SELECT * FROM call_logs ORDER BY ended_at DESC").fetchall()
+        logs = [dict(r) for r in rows]
+
+        return {
+            "total_calls": total_calls,
+            "successful_calls": successful_calls,
+            "failed_calls": failed_calls,
+            "success_rate": round((successful_calls / total_calls * 100), 1) if total_calls > 0 else 0,
+            "logs": logs,
+        }
     finally:
         conn.close()

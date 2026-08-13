@@ -25,17 +25,15 @@ export interface AppConfig {
   audioVisualizerRadialRadius?: number;
   audioVisualizerWaveLineWidth?: number;
 
-  // agent dispatch configuration
   agentName?: string;
-
-  // LiveKit Cloud Sandbox configuration
   sandboxId?: string;
 }
 
 export const APP_CONFIG_DEFAULTS: AppConfig = {
-  companyName: 'AI Learning Companion',
-  pageTitle: 'AI Learning Companion — Voice Tutor',
-  pageDescription: 'Your personal AI learning companion powered by voice — learn anything, anytime.',
+  companyName: 'Learning Companion',
+  pageTitle: 'Learning Companion - Voice Learning Platform',
+  pageDescription:
+    'A voice-first learning platform with tutoring, consent memory, teacher handoff, and live analytics.',
 
   supportsChatInput: true,
   supportsVideoInput: false,
@@ -43,20 +41,16 @@ export const APP_CONFIG_DEFAULTS: AppConfig = {
   isPreConnectBufferEnabled: true,
 
   logo: '/murf-logo.svg',
-  accent: '#6366F1',
+  accent: '#2DD4BF',
   logoDark: '/murf-logo-dark.svg',
-  accentDark: '#818cf8',
-  startButtonText: 'Start Learning',
+  accentDark: '#5EEAD4',
+  startButtonText: 'Start voice session',
 
-  // Aura visualizer with indigo tones
   audioVisualizerType: 'aura',
-  audioVisualizerColor: '#6366F1',
-  audioVisualizerColorDark: '#818cf8',
-  audioVisualizerColorShift: 0.4,
+  audioVisualizerColor: '#2DD4BF',
+  audioVisualizerColorDark: '#5EEAD4',
+  audioVisualizerColorShift: 0.38,
 
-  // agent dispatch configuration
   agentName: process.env.AGENT_NAME ?? undefined,
-
-  // LiveKit Cloud Sandbox configuration
   sandboxId: undefined,
 };

@@ -1,127 +1,50 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+import {
+  ArrowRight,
+  BarChart3,
+  BookOpenCheck,
+  GraduationCap,
+  Headphones,
+  Mic,
+  ShieldCheck,
+  Sparkles,
+  UserRoundCheck,
+  UsersRound,
+} from 'lucide-react';
 
-/* ─── Animated floating orbs background ──────────────────── */
-function FloatingOrbs() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {/* Large background orb */}
-      <div
-        className="absolute -top-32 -left-32 h-[500px] w-[500px] rounded-full opacity-20 blur-3xl"
-        style={{ background: 'radial-gradient(circle, #818cf8, #6366f1, transparent)' }}
-      />
-      <div
-        className="absolute -bottom-32 -right-32 h-[400px] w-[400px] rounded-full opacity-15 blur-3xl"
-        style={{ background: 'radial-gradient(circle, #f59e0b, #f97316, transparent)' }}
-      />
-      <div
-        className="absolute top-1/2 left-1/2 h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-10 blur-3xl"
-        style={{ background: 'radial-gradient(circle, #a78bfa, #6366f1, transparent)' }}
-      />
-      {/* Floating particles */}
-      {[...Array(6)].map((_, i) => (
-        <div
-          key={i}
-          className="animate-float absolute rounded-full opacity-40"
-          style={{
-            width: `${8 + i * 4}px`,
-            height: `${8 + i * 4}px`,
-            background: i % 2 === 0 ? '#818cf8' : '#f59e0b',
-            top: `${15 + i * 12}%`,
-            left: `${10 + i * 15}%`,
-            animationDelay: `${i * 0.5}s`,
-            animationDuration: `${3 + i * 0.5}s`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
-/* ─── Book / Graduation cap SVG icon ─────────────────────── */
-function LearningIcon() {
-  return (
-    <svg
-      width="80"
-      height="80"
-      viewBox="0 0 80 80"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="drop-shadow-lg"
-      aria-hidden="true"
-    >
-      {/* Graduation cap top */}
-      <ellipse cx="40" cy="28" rx="28" ry="8" fill="#6366f1" opacity="0.9" />
-      <ellipse cx="40" cy="26" rx="28" ry="8" fill="#818cf8" />
-      {/* Cap middle */}
-      <rect x="28" y="26" width="24" height="20" rx="3" fill="#6366f1" />
-      {/* Book pages */}
-      <rect x="26" y="30" width="28" height="18" rx="3" fill="#4f46e5" />
-      <line x1="40" y1="31" x2="40" y2="47" stroke="#818cf8" strokeWidth="1.5" opacity="0.5" />
-      {/* Tassel */}
-      <circle cx="60" cy="26" r="3" fill="#f59e0b" />
-      <line x1="60" y1="29" x2="60" y2="50" stroke="#f59e0b" strokeWidth="2" />
-      <circle cx="60" cy="52" r="4" fill="#f59e0b" opacity="0.8" />
-      {/* Star sparkles */}
-      <circle cx="14" cy="18" r="2.5" fill="#f59e0b" className="animate-pulse" />
-      <circle cx="66" cy="55" r="2" fill="#818cf8" className="animate-pulse" style={{ animationDelay: '0.7s' }} />
-      <circle cx="20" cy="58" r="1.5" fill="#a78bfa" className="animate-pulse" style={{ animationDelay: '1.2s' }} />
-    </svg>
-  );
-}
-
-/* ─── Feature badge ───────────────────────────────────────── */
-function FeatureBadge({ emoji, text }: { emoji: string; text: string }) {
-  return (
-    <div className="flex items-center gap-2 rounded-full border border-indigo-200 bg-white/60 px-3 py-1.5 text-xs font-medium text-indigo-700 backdrop-blur-sm dark:border-indigo-800/50 dark:bg-indigo-950/30 dark:text-indigo-300">
-      <span>{emoji}</span>
-      <span>{text}</span>
-    </div>
-  );
-}
-
-/* ─── Typing animation for subtitle ──────────────────────── */
-const SUBTITLE_TEXTS = [
-  'Ask me anything about Science',
-  'Let\'s explore Mathematics together',
-  'Learn English with confidence',
-  'Understand Computers & AI',
-  'Discover History and Geography',
+const PROMPTS = [
+  'Explain photosynthesis in Hindi',
+  'Give me a beginner math question',
+  'Remember my name after I tell you',
+  'I am stuck, connect me to a teacher',
 ];
 
-function TypingSubtitle() {
-  const [index, setIndex] = useState(0);
-  const [displayed, setDisplayed] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
+const CAPABILITIES = [
+  {
+    icon: BookOpenCheck,
+    title: 'Adaptive practice',
+    body: 'The tutor can fetch level-based questions and coach the learner step by step.',
+  },
+  {
+    icon: UserRoundCheck,
+    title: 'Consent memory',
+    body: 'Returning learners are recognized only after permission, with topic and level context.',
+  },
+  {
+    icon: UsersRound,
+    title: 'Teacher handoff',
+    body: 'When a student is stuck or asks for help, the agent creates a reviewable ticket.',
+  },
+  {
+    icon: BarChart3,
+    title: 'Live outcomes',
+    body: 'Every session can feed call success, completion, and escalation analytics.',
+  },
+];
 
-  useEffect(() => {
-    const currentText = SUBTITLE_TEXTS[index];
-    let timeout: ReturnType<typeof setTimeout>;
-
-    if (!isDeleting && displayed.length < currentText.length) {
-      timeout = setTimeout(() => setDisplayed(currentText.slice(0, displayed.length + 1)), 60);
-    } else if (!isDeleting && displayed.length === currentText.length) {
-      timeout = setTimeout(() => setIsDeleting(true), 2200);
-    } else if (isDeleting && displayed.length > 0) {
-      timeout = setTimeout(() => setDisplayed(displayed.slice(0, -1)), 30);
-    } else if (isDeleting && displayed.length === 0) {
-      setIsDeleting(false);
-      setIndex((prev) => (prev + 1) % SUBTITLE_TEXTS.length);
-    }
-
-    return () => clearTimeout(timeout);
-  }, [displayed, isDeleting, index]);
-
-  return (
-    <span className="font-medium text-indigo-600 dark:text-indigo-400">
-      {displayed}
-      <span className="animate-pulse">|</span>
-    </span>
-  );
-}
-
-/* ─── Mic permission check ────────────────────────────────── */
 function useMicPermission() {
   const [status, setStatus] = useState<PermissionState | 'unknown'>('unknown');
 
@@ -139,31 +62,39 @@ function useMicPermission() {
   return status;
 }
 
-/* ─── Mic denied banner ───────────────────────────────────── */
+function SignalBars() {
+  return (
+    <div className="flex h-16 items-end gap-1.5" aria-hidden="true">
+      {[42, 58, 34, 64, 48, 72, 52, 40, 62, 46].map((height, index) => (
+        <span
+          key={index}
+          className="w-2 rounded-full bg-white/80"
+          style={{
+            height,
+            animation: `wave-bounce ${0.55 + index * 0.04}s ease-in-out infinite alternate`,
+            animationDelay: `${index * 0.05}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 function MicDeniedBanner() {
   return (
-    <div
-      className="mb-4 flex max-w-sm items-start gap-3 rounded-2xl border p-3 text-left shadow-md"
-      style={{
-        background: 'oklch(0.98 0.03 27 / 0.95)',
-        borderColor: 'oklch(0.70 0.20 27 / 0.4)',
-        backdropFilter: 'blur(8px)',
-      }}
-      role="alert"
-    >
-      <span className="mt-0.5 text-lg">🎤</span>
+    <div className="flex max-w-xl items-start gap-3 rounded-lg border border-amber-300/50 bg-amber-50/90 p-3 text-left text-amber-950 shadow-sm">
+      <ShieldCheck className="mt-0.5 size-5 shrink-0" />
       <div>
-        <p className="text-sm font-bold text-orange-800">Microphone access is blocked</p>
-        <p className="mt-0.5 text-xs text-orange-700">
-          Click the lock/camera icon in your browser&apos;s address bar, set Microphone to
-          &quot;Allow&quot;, and reload the page.
+        <p className="text-sm font-semibold">Microphone access is blocked</p>
+        <p className="mt-1 text-xs text-amber-800">
+          Allow microphone access from the browser address bar and reload the page to start a voice
+          session.
         </p>
       </div>
     </div>
   );
 }
 
-/* ─── Main WelcomeView ────────────────────────────────────── */
 interface WelcomeViewProps {
   startButtonText: string;
   onStartCall: () => void;
@@ -178,101 +109,132 @@ export const WelcomeView = ({
   const isMicDenied = micPermission === 'denied';
 
   return (
+    <div
+      ref={ref}
+      className="relative min-h-svh w-full overflow-hidden bg-[#07111f] text-white"
+    >
+      <div className="absolute inset-0 cinematic-grid" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(20,184,166,0.28),transparent_32%),radial-gradient(circle_at_78%_18%,rgba(245,158,11,0.22),transparent_30%),linear-gradient(135deg,#07111f_0%,#10233c_46%,#151318_100%)]" />
+      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#07111f] to-transparent" />
 
-    <div ref={ref} className="relative flex h-svh w-full flex-col items-center justify-center overflow-hidden">
-      {/* Animated background */}
-      <div className="hero-bg absolute inset-0" />
-      <FloatingOrbs />
+      <section className="relative z-10 mx-auto grid min-h-svh w-full max-w-7xl grid-cols-1 items-center gap-10 px-5 pt-28 pb-10 md:grid-cols-[1.05fr_0.95fr] md:px-8 lg:px-10">
+        <div className="max-w-3xl">
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.08] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-teal-100 backdrop-blur">
+            <Sparkles className="size-3.5" />
+            Learning and Literacy Track
+          </div>
 
-      {/* Main card */}
-      <div className="relative z-10 flex flex-col items-center px-6 text-center">
+          <h1 className="max-w-3xl text-5xl font-black leading-[0.95] tracking-normal text-white md:text-7xl">
+            A voice tutor that becomes a learning safety net.
+          </h1>
 
-        {/* Icon with glow ring */}
-        <div className="relative mb-6 animate-float">
-          <div
-            className="animate-pulse-ring absolute inset-0 rounded-full"
-            style={{ margin: '-12px' }}
-          />
-          <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-white/80 shadow-2xl backdrop-blur-sm dark:bg-slate-900/70">
-            <LearningIcon />
+          <p className="mt-6 max-w-2xl text-base leading-7 text-slate-200 md:text-lg">
+            Teach in Hindi or English, remember progress with consent, generate practice,
+            escalate stuck learners to teachers, and show outcomes in a live command center.
+          </p>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <button
+              id="start-learning-btn"
+              onClick={isMicDenied ? undefined : onStartCall}
+              disabled={isMicDenied}
+              aria-disabled={isMicDenied}
+              className={
+                isMicDenied
+                  ? 'inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-slate-300 px-6 py-3 text-sm font-bold text-slate-600 opacity-70'
+                  : 'inline-flex items-center justify-center gap-2 rounded-lg bg-teal-400 px-6 py-3 text-sm font-black text-slate-950 shadow-[0_16px_48px_rgba(45,212,191,0.25)] transition hover:bg-teal-300 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-200/50'
+              }
+            >
+              <Mic className="size-4" />
+              {isMicDenied ? 'Microphone blocked' : startButtonText}
+            </button>
+            <Link
+              href="/analytics"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/[0.08] px-6 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/[0.14]"
+            >
+              View live platform
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+
+          <div className="mt-6">{isMicDenied && <MicDeniedBanner />}</div>
+
+          <div className="mt-8 flex flex-wrap gap-2">
+            {PROMPTS.map((prompt) => (
+              <span
+                key={prompt}
+                className="rounded-full border border-white/12 bg-black/20 px-3 py-1.5 text-xs font-medium text-slate-200 backdrop-blur"
+              >
+                Try: "{prompt}"
+              </span>
+            ))}
           </div>
         </div>
 
-        {/* Heading */}
-        <h1 className="mb-2 text-4xl font-extrabold tracking-tight text-slate-800 dark:text-white md:text-5xl">
-          AI Learning{' '}
-          <span
-            style={{
-              background: 'linear-gradient(135deg, #6366f1, #a78bfa)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
-          >
-            Companion
-          </span>
-        </h1>
+        <div className="relative">
+          <div className="rounded-[2rem] border border-white/12 bg-white/10 p-3 shadow-2xl backdrop-blur-xl">
+            <div className="overflow-hidden rounded-[1.45rem] border border-white/10 bg-[#091521]">
+              <div className="border-b border-white/10 bg-white/[0.08] px-5 py-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-200">
+                      Live learning session
+                    </p>
+                    <p className="mt-1 text-lg font-bold">New learner voice session</p>
+                  </div>
+                  <div className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-200">
+                    Listening
+                  </div>
+                </div>
+              </div>
 
-        {/* Typing subtitle */}
-        <p className="mb-2 min-h-[28px] text-base text-slate-600 dark:text-slate-400 md:text-lg">
-          <TypingSubtitle />
-        </p>
+              <div className="grid gap-4 p-5">
+                <div className="rounded-xl border border-teal-300/20 bg-teal-300/10 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-200">
+                    Agent action
+                  </p>
+                  <p className="mt-2 text-sm text-slate-100">
+                    Ready to fetch a practice question after the learner asks.
+                  </p>
+                </div>
 
-        <p className="mb-8 max-w-sm text-sm text-slate-500 dark:text-slate-500">
-          Your friendly voice tutor — available 24/7, in Hindi or English.
-        </p>
+                <div className="rounded-xl border border-white/10 bg-white/[0.08] p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                        Voice signal
+                      </p>
+                      <p className="mt-2 text-sm text-slate-200">Hindi-English conversation active</p>
+                    </div>
+                    <SignalBars />
+                  </div>
+                </div>
 
-        {/* Feature badges */}
-        <div className="mb-8 flex flex-wrap items-center justify-center gap-2">
-          <FeatureBadge emoji="🎓" text="All Subjects" />
-          <FeatureBadge emoji="🇮🇳" text="Hindi & English" />
-          <FeatureBadge emoji="🎙️" text="Voice Powered" />
-          <FeatureBadge emoji="✨" text="Always Patient" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+                    <p className="text-2xl font-black text-white">24h</p>
+                    <p className="mt-1 text-xs text-slate-400">teacher follow-up SLA</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+                    <p className="text-2xl font-black text-white">100%</p>
+                    <p className="mt-1 text-xs text-slate-400">consent-first memory</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {CAPABILITIES.map(({ icon: Icon, title, body }) => (
+              <div key={title} className="rounded-lg border border-white/10 bg-white/[0.08] p-4 backdrop-blur">
+                <Icon className="size-5 text-amber-300" />
+                <p className="mt-3 text-sm font-bold text-white">{title}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-300">{body}</p>
+              </div>
+            ))}
+          </div>
         </div>
-
-        {/* Mic denied warning */}
-        {isMicDenied && <MicDeniedBanner />}
-
-        {/* CTA Button */}
-        <button
-          id="start-learning-btn"
-          onClick={isMicDenied ? undefined : onStartCall}
-          disabled={isMicDenied}
-          aria-disabled={isMicDenied}
-          className={
-            isMicDenied
-              ? 'flex cursor-not-allowed items-center gap-3 rounded-full bg-slate-300 px-10 py-4 text-base font-bold tracking-wide text-slate-500 uppercase opacity-60 shadow'
-              : 'btn-glow group relative flex items-center gap-3 rounded-full px-10 py-4 text-base font-bold tracking-wide text-white uppercase shadow-xl transition-all duration-300 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-400/50'
-          }
-        >
-          {/* Mic icon */}
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="transition-transform duration-300 group-hover:scale-110"
-          >
-            <rect x="9" y="2" width="6" height="11" rx="3" fill={isMicDenied ? '#9ca3af' : 'white'} />
-            <path
-              d="M5 10C5 10 5 16 12 16C19 16 19 10 19 10"
-              stroke={isMicDenied ? '#9ca3af' : 'white'}
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-            <line x1="12" y1="16" x2="12" y2="21" stroke={isMicDenied ? '#9ca3af' : 'white'} strokeWidth="2" strokeLinecap="round" />
-            <line x1="9" y1="21" x2="15" y2="21" stroke={isMicDenied ? '#9ca3af' : 'white'} strokeWidth="2" strokeLinecap="round" />
-          </svg>
-          {isMicDenied ? 'Microphone Blocked' : startButtonText}
-        </button>
-
-        {/* Disclaimer */}
-        <p className="mt-6 text-xs text-slate-400 dark:text-slate-600">
-          {isMicDenied
-            ? '🔒 Allow microphone in browser settings, then reload.'
-            : 'Please allow microphone access when prompted to start your session.'}
-        </p>
-      </div>
+      </section>
     </div>
   );
 };

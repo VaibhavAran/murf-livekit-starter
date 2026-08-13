@@ -1,4 +1,5 @@
 import logging
+import os
 
 from dotenv import load_dotenv
 from livekit import rtc
@@ -16,7 +17,7 @@ from livekit.agents import (
 from livekit.plugins import deepgram, google, murf, noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
-from database import get_user, save_escalation, save_user
+from database import get_user, save_call_log, save_escalation, save_user
 from prompts import build_instructions
 
 logger = logging.getLogger("agent")
@@ -39,6 +40,8 @@ class Assistant(Agent):
         super().__init__(instructions=build_instructions(profile, is_outbound=is_outbound))
         self._user_id = user_id
         self._has_consent = False  # tracks if user gave save consent
+        self.exercises_done = 0
+        self.escalation_done = 0
 
     # ------------------------------------------------------------------
     # Tool 1 — Save caller info (requires explicit consent)
@@ -86,7 +89,7 @@ class Assistant(Agent):
         Fetch a practice question from the local dataset.
         Call this when the student asks for a practice question, exercise,
         or quiz on a topic.
-        Available topics: science, math, english.
+        Available topics: science, math, english, computers, history, geography.
         Available levels: beginner, intermediate, advanced.
         """
         logger.info(
@@ -110,6 +113,21 @@ class Assistant(Agent):
                 "beginner": "Can you give me an example of a noun in a sentence?",
                 "intermediate": "What is the difference between 'there', 'their', and 'they're'?",
                 "advanced": "Can you explain what a metaphor is and give me one example?",
+            },
+            "computers": {
+                "beginner": "What is the difference between hardware and software?",
+                "intermediate": "Why do we use loops in programming?",
+                "advanced": "How would you explain recursion using a simple real-life example?",
+            },
+            "history": {
+                "beginner": "Who is known as the Father of the Indian Constitution?",
+                "intermediate": "Why was the Salt March important in India's freedom struggle?",
+                "advanced": "How did non-cooperation become a political strategy during the freedom movement?",
+            },
+            "geography": {
+                "beginner": "What are the three main states of water found on Earth?",
+                "intermediate": "Why do coastal areas usually have moderate temperatures?",
+                "advanced": "How do monsoon winds influence agriculture in India?",
             },
         }
 
@@ -135,6 +153,7 @@ class Assistant(Agent):
             )
 
         question = dataset[topic_lower][level_lower]
+        self.exercises_done += 1
         return (
             f"Question: {question}\n"
             f"Source Note: From the hand-built local practice-question "
@@ -172,6 +191,7 @@ class Assistant(Agent):
             "summary": summary,
             "preferred_contact": preferred_contact,
         })
+        self.escalation_done += 1
 
         return (
             f"Success: Escalation request created successfully. "
@@ -251,8 +271,11 @@ async def my_agent(ctx: JobContext):
         preemptive_generation=True,
     )
 
+    start_time = asyncio.get_event_loop().time()
+    assistant_instance = Assistant(user_id=user_id, profile=profile, is_outbound=is_sip)
+
     await session.start(
-        agent=Assistant(user_id=user_id, profile=profile, is_outbound=is_sip),
+        agent=assistant_instance,
         room=ctx.room,
         room_options=room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(
@@ -277,6 +300,34 @@ async def my_agent(ctx: JobContext):
             "Are you ready for a quick practice question today?",
             allow_interruptions=True,
         )
+
+    # Save Call Analytics Log when session closes
+    def log_call_analytics():
+        duration = int(asyncio.get_event_loop().time() - start_time)
+        exercises = assistant_instance.exercises_done
+        escalations = assistant_instance.escalation_done
+        has_consent = assistant_instance._has_consent
+
+        # Day 8 Success Definition for Learning & Literacy:
+        # A call is successful if a practice exercise was completed, a teacher escalation was requested, or consent profile saved.
+        status = "SUCCESS" if (exercises > 0 or escalations > 0 or has_consent) else "FAILED"
+
+        caller_name = (profile.get("name") if profile else None) or "Student"
+        call_type = "outbound_sip" if is_sip else "inbound_web"
+
+        save_call_log({
+            "call_id": f"CALL-{os.urandom(3).hex().upper()}",
+            "user_id": user_id,
+            "caller_name": caller_name,
+            "call_type": call_type,
+            "duration_seconds": max(duration, 1),
+            "exercises_done": exercises,
+            "escalation_done": escalations,
+            "status": status,
+        })
+        logger.info("Call session ended. Logged outcome: %s (duration=%ds, exercises=%d)", status, duration, exercises)
+
+    ctx.add_shutdown_callback(log_call_analytics)
 
 
 if __name__ == "__main__":

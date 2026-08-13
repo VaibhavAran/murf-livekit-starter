@@ -75,6 +75,14 @@ An interactive voice AI companion for students in India, powered by Murf Falcon 
 
 ---
 
+### Day 8: Call Analytics Dashboard
+- **Success Criteria:** A call is recorded as **SUCCESSFUL** if the learner completes a practice exercise (`fetch_practice_question`), requests a teacher escalation (`create_escalation`), or saves their profile. Calls ending early without reaching these criteria are recorded as **FAILED**.
+- **Automated Call Logging:** When any call session (browser or SIP) ends, an agent shutdown callback calculates the call duration, checks metrics, and logs the call outcome to SQLite `call_logs`.
+- **Live Analytics Dashboard:** Interactive dashboard at `http://localhost:3000/analytics` showing real-time metrics (Total Calls, Successful Calls, Failed Calls, Success Rate %) and recent call logs.
+- **Privacy Protection:** Displays only sanitized operational metrics and call metadata without private passwords, PINs, or conversation transcripts.
+
+---
+
 ## How to Run the Application
 
 ### 1. Backend Setup
@@ -102,6 +110,7 @@ pnpm install
 pnpm dev
 ```
 
-### 4. Open Application & Teacher Dashboard
-- Voice Agent UI: `http://localhost:3000`
-- Teacher Escalations Dashboard (Day 7): `http://localhost:3000/escalations`
+### 4. Dashboards & Web UI
+- **Voice Agent UI:** `http://localhost:3000`
+- **Teacher Escalations Dashboard (Day 7):** `http://localhost:3000/escalations`
+- **Call Analytics Dashboard (Day 8):** `http://localhost:3000/analytics`
