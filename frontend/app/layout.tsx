@@ -78,7 +78,6 @@ export default async function RootLayout({ children }: RootLayoutProps) {
           enableSystem
           disableTransitionOnChange
         >
-<<<<<<< HEAD
           <header className="fixed top-0 left-0 z-50 flex w-full flex-row items-center justify-between border-b border-white/10 bg-slate-950/85 px-4 py-3 shadow-2xl backdrop-blur-xl md:px-6">
             <Link href="/" className="group flex items-center gap-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-400 text-slate-950 shadow-md shadow-teal-500/20 transition-transform group-hover:scale-105">
@@ -86,7 +85,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
               </div>
               <div className="flex flex-col">
                 <span className="text-sm font-bold leading-none tracking-tight text-slate-100">
-                  Learning Companion
+                  AI Learning Companion
                 </span>
                 <span className="mt-1 text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">
                   Voice learning platform
@@ -115,43 +114,6 @@ export default async function RootLayout({ children }: RootLayoutProps) {
                 Platform
               </Link>
             </div>
-=======
-          <header className="fixed top-0 left-0 z-50 flex w-full flex-row items-center justify-between px-5 py-4 md:px-8 bg-slate-900/40 backdrop-blur-md border-b border-slate-800/50">
-            {/* Brand */}
-            <div className="flex items-center gap-3">
-              <a href="/" className="flex items-center gap-2">
-                <span className="text-xl" aria-hidden="true">🎓</span>
-                <span
-                  className="font-bold tracking-tight text-slate-700 dark:text-slate-200"
-                  style={{ fontSize: '0.95rem' }}
-                >
-                  AI Learning Companion
-                </span>
-              </a>
-            </div>
-
-            {/* Navigation links for Judges */}
-            <nav className="flex items-center gap-2 font-medium text-xs">
-              <a
-                href="/"
-                className="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/80 transition"
-              >
-                🎙️ Voice Companion
-              </a>
-              <a
-                href="/escalations"
-                className="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/80 transition"
-              >
-                🧑‍🏫 Teacher Portal
-              </a>
-              <a
-                href="/analytics"
-                className="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/80 transition"
-              >
-                📊 Analytics
-              </a>
-            </nav>
->>>>>>> 70f31b43097c8f91f583b590b570507045e6d05a
           </header>
 
           {children}

@@ -9,6 +9,7 @@ from livekit.agents import (
     AgentSession,
     JobContext,
     JobProcess,
+    RunContext,
     cli,
     function_tool,
     room_io,
@@ -18,7 +19,7 @@ from livekit.plugins import deepgram, google, murf, noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 from database import get_user, save_call_log, save_escalation, save_user
-from prompts import build_instructions
+from prompts import MATH_SPECIALIST_PROMPT, build_instructions
 
 logger = logging.getLogger("agent")
 
@@ -201,6 +202,55 @@ class Assistant(Agent):
             f"Ask if they would like to try a simpler question in the meantime."
         )
 
+    # ------------------------------------------------------------------
+    # Tool 5 — Handoff to Specialist Agent (Day 9 Task)
+    # ------------------------------------------------------------------
+    @function_tool
+    async def transfer_to_math_specialist(
+        self,
+        context: RunContext,
+        math_topic_or_problem: str,
+    ) -> str:
+        """
+        Transfer the conversation to the specialized Math Practice Specialist Agent.
+        Call this tool ONLY when the user asks for focused math help, step-by-step
+        problem-solving guidelines, algebra assistance, or explicitly wants a math specialist tutor.
+        """
+        logger.info("Tool called: transfer_to_math_specialist for topic='%s'", math_topic_or_problem)
+
+        # Handoff current session to the MathSpecialistAssistant agent
+        # The specialist agent receives the topic context so the student doesn't repeat themselves
+        math_specialist = MathSpecialistAssistant(math_topic_or_problem)
+        context.session.update_agent(math_specialist)
+
+        return (
+            "Success: Transferring to Math Specialist Agent. "
+            "Greet the user and tell them: 'I am transferring you to our Math Specialist Agent now.'"
+        )
+
+
+class MathSpecialistAssistant(Agent):
+    def __init__(self, topic_context: str) -> None:
+        # Construct instructions starting with Specialist System Prompt
+        instructions = (
+            f"{MATH_SPECIALIST_PROMPT}\n"
+            f"CONTEXT FOR TAKEOVER:\n"
+            f"The student requested help with: '{topic_context}'\n"
+            f"Begin immediately by addressing this specific challenge step-by-step!"
+        )
+        super().__init__(
+            instructions=instructions,
+            # Override TTS voice specifically for the Math Specialist using en-IN-anisha (Indian English female)
+            tts=murf.TTS(
+                locale="en-IN",
+                voice="en-IN-anisha",
+                style="Conversational",
+                tokenizer=tokenize.basic.SentenceTokenizer(min_sentence_len=2),
+                text_pacing=True,
+            )
+        )
+        logger.info("MathSpecialistAssistant initialized with Samar voice and context: '%s'", topic_context)
+
 
 server = AgentServer()
 
@@ -258,7 +308,7 @@ async def my_agent(ctx: JobContext):
             model="nova-3",
             language=STT_LANGUAGE,
         ),
-        llm=google.LLM(model="gemini-3.5-flash"),
+        llm=google.LLM(model="gemini-3.6-flash"),
         tts=murf.TTS(
             locale=TTS_LOCALE,
             voice=TTS_VOICE,

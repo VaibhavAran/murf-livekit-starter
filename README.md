@@ -83,6 +83,15 @@ An interactive voice AI companion for students in India, powered by Murf Falcon 
 
 ---
 
+### Day 9: Specialist Agent Handoff
+- **Specialist Agent:** Math Practice Specialist Agent (`MathSpecialistAssistant`).
+  - **Job Focus:** Step-by-step arithmetic, equation parsing, and guidance on algebraic problems.
+- **Handoff Tool:** `transfer_to_math_specialist` uses LiveKit's `session.update_agent(...)` to dynamically hot-swap the active voice agent mid-conversation.
+- **Context Preservation:** Passes the math question and learner profile context directly to the specialist during handoff so the student never has to repeat themselves.
+- **Clear Handoff Flow:** The general companion announces the handoff out loud (*"I will transfer you to our Math Specialist Agent..."*), and the Math Specialist takes over and immediately introduces itself (*"Hello! I am your Math Specialist. Let's solve..."*).
+
+---
+
 ## How to Run the Application
 
 ### 1. Backend Setup
